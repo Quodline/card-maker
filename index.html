@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Card Maker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link href="styles.css" rel="stylesheet">
+    <script defer src="main.js"></script>
+    <script defer src="alpine.min.js"></script>
+</head>
+<body>
+<noscript>
+    <p>Error: JavaScript is unsupported or disabled. This app can not work as expected without JavaScript.</p>
+</noscript>
+<main x-data="canvasApp()" x-init="() => {
+    if (! supported)
+        throw Error('Web Canvas is not supported in this browser');
+    context = $refs.canvas.getContext('2d');}"
+      @render.window="render()" @state-change.window="Object.assign(context, $event.detail)">
+    <h1>Card Maker</h1>
+    <details>
+        <summary>Merry Christmas Card (Drawn with this app)</summary>
+        <img :src="merryChristmasSample()" class="sample-card" alt="Merry Christmas Card">
+    </details>
+    <div class="main-flex-wrapper">
+        <div class="cardboard">
+            <canvas x-ref="canvas" class="drawingCanvas" width="500" height="500">
+                <h3>The cardboard</h3>
+                <p>If you can read this, it is most likely that your browser does not support Web Canvas technology used
+                    in this app.</p>
+            </canvas>
+        </div>
+        <div class="toolBox"
+             @insert.window="add($event.detail.obj); selectedTab=objects.length-1"
+             @delete.window="remove(objects[$event.detail.index]); selectedTab === $event.detail.index && selectedTab--;">
+            <div class="toolSet">
+                <h2>Insert</h2>
+                <button @click="$dispatch('insert', {obj: new CanvasText(context)})">Text</button>
+                <button @click="$dispatch('insert', {obj: new CanvasRectangle(context)})">Rectangle</button>
+                <button @click="$dispatch('insert', {obj: new CanvasCircle(context)})">Circle</button>
+                <button @click="$dispatch('insert', {obj: new CanvasTriangle(context)})">Triangle</button>
+            </div>
+            <div class="toolSet">
+                <h2>Objects</h2>
+                <template x-for="(obj, i) in objects" :key="i">
+                    <button :class="`tab${tabIsSelected(i)}`" @click="selectedTab = i">
+                        <span x-text="`${i+1}. ${CanvasTypeWizard.typeOf(obj)}`"></span>
+                        <span @click.stop="$dispatch('delete', {index: i})">&times;</span>
+                    </button>
+                </template>
+                <template x-if="! objects.length"><p><em>Canvas is empty.</em></p></template>
+            </div>
+            <template x-if="objects[selectedTab]">
+                <div class="toolSet edit-controls">
+                    <template x-if="objIsOfType(objects[selectedTab], CanvasText)">
+                        <fieldset>
+                            <legend>Text</legend>
+                            <label>
+                                Value: <input x-model="objects[selectedTab].text" @input="render()">
+                            </label>
+                            <label>
+                                Font style:
+                                <select @input="objects[selectedTab].fontStyle = $event.target.value; render()">
+                                    <option value="normal">Normal</option>
+                                    <option value="italic">Italic</option>
+                                    <option value="oblique">Oblique</option>
+                                </select>
+                            </label>
+                            <label>
+                                Font weight:
+                                <select @input="objects[selectedTab].fontWeight = $event.target.value; render()">
+                                    <option value="normal">Normal</option>
+                                    <option value="bold">Bold</option>
+                                    <option value="bolder">Bolder</option>
+                                    <option value="lighter">Lighter</option>
+                                </select>
+                            </label>
+                            <label>
+                                Font size: <input type="number" x-model.number="objects[selectedTab].fontSize"
+                                                  @input="render()"
+                                                  min="12" max="72" step="3" size="2">
+                            </label>
+                        </fieldset>
+                    </template>
+                    <template x-if="objIsOfType(objects[selectedTab], CanvasRectangle)">
+                        <fieldset>
+                            <legend>Rectangle</legend>
+                            <label>
+                                Width: <input type="number" x-model.number="objects[selectedTab].width"
+                                              @input="render()" min="3" :max="$refs.canvas.width" size="3">
+                            </label>
+                            <label>
+                                Height: <input type="number" x-model.number="objects[selectedTab].height"
+                                               @input="render()" min="3" :max="$refs.canvas.height" size="3">
+                            </label>
+                        </fieldset>
+                    </template>
+                    <template x-if="objIsOfType(objects[selectedTab], CanvasCircle)">
+                        <fieldset>
+                            <legend>Circle</legend>
+                            <label>
+                                Radius: <input type="number" x-model.number="objects[selectedTab].radius"
+                                               @input="render()" min="3" :max="$refs.canvas.width/2" size="3">
+                            </label>
+                        </fieldset>
+                    </template>
+                    <template x-if="objIsOfType(objects[selectedTab], CanvasTriangle)">
+                        <fieldset>
+                            <legend>Triangle</legend>
+                            <label>
+                                Base: <input type="number" x-model.number="objects[selectedTab].base"
+                                             @input="render()" min="3" :max="$refs.canvas.width" size="3">
+                            </label>
+                            <label>
+                                Height: <input type="number" x-model.number="objects[selectedTab].height"
+                                               @input="render()" min="3" :max="$refs.canvas.height" size="3">
+                            </label>
+                        </fieldset>
+                    </template>
+                    <fieldset>
+                        <legend>Properties</legend>
+                        <label>
+                            x: <input type="number" x-model.number="objects[selectedTab].x" @input="render()"
+                                      min="0" max="490" size="3">
+                        </label>
+                        <label>
+                            y: <input type="number" x-model.number="objects[selectedTab].y" @input="render()"
+                                      min="0" max="490" size="3">
+                        </label>
+                        <label>
+                            Fill color: <input type="color" x-model="objects[selectedTab].fillStyle" @input="render()">
+                        </label>
+                        <label>
+                            Stroke color: <input type="color" x-model="objects[selectedTab].strokeStyle"
+                                                 @input="render()">
+                        </label>
+                        <label>
+                            Stroke width: <input type="number" x-model.number="objects[selectedTab].lineWidth"
+                                                 @input="render()" min="0" max="10" step="1" size="2">
+                        </label>
+                        <label>
+                            Opacity:
+                            <input type="range" x-model.number="objects[selectedTab].opacity" @input="render()" min="0"
+                                   max="1" step="0.1">
+                        </label>
+                        <label>
+                            Tilt angle:
+                            <input type="number" x-model.number="objects[selectedTab].rotateAngle" @input="render()"
+                                   min="-360" max="360" size="4">
+                        </label>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Shadow</legend>
+                        <label>
+                            Offset x: <input type="number" x-model.number="objects[selectedTab].shadowOffsetX"
+                                             @input="render()" :min="-200" :max="200" step="1" size="4">
+                        </label>
+                        <label>
+                            Offset y: <input type="number" x-model.number="objects[selectedTab].shadowOffsetY"
+                                             @input="render()" :min="-200" :max="200" step="1" size="4">
+                        </label>
+                        <label>
+                            Blur: <input type="range" x-model.number="objects[selectedTab].shadowBlur" @input="render()"
+                                         :min="-50" :max="50" step="1">
+                        </label>
+                        <label>
+                            Color: <input type="color" x-model="objects[selectedTab].shadowColor"
+                                          @input="render()">
+                        </label>
+                    </fieldset>
+                </div>
+            </template>
+            <div class="toolSet">
+                <h2>Export as</h2>
+                <a :href="dataUrl()" class="button" download="untitled-card.png">PNG</a>
+                <a :href="dataUrl('image/jpeg')" class="button" download="untitled-card.jpg">JPG</a>
+                <button @click="showText(dataUrl())" :title="dataUrl()">Base 64</button>
+                <button @click="showText(toJSON())" :title="toJSON()">JSON</button>
+                <template x-if="textareaVisible">
+                    <div>
+                        <textarea x-text="textareaContent" contenteditable="false"></textarea>
+                        <button @click="textareaVisible = false">Hide</button>
+                    </div>
+                </template>
+            </div>
+            <div class="toolSet">
+                <h2>Import from</h2>
+                <p>
+                    JSON: <textarea @change="objects = fromJSON($event.target.value); render();"></textarea>
+                </p>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>
