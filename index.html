@@ -16,7 +16,8 @@
 <main x-data="canvasApp()" x-init="() => {
     if (! supported)
         throw Error('Web Canvas is not supported in this browser');
-    context = $refs.canvas.getContext('2d');}"
+    context = $refs.canvas.getContext('2d');
+    $watch('objects', () => render());}"
       @render.window="render()" @state-change.window="Object.assign(context, $event.detail)">
     <h1>Card Maker</h1>
     <details>
@@ -32,8 +33,8 @@
             </canvas>
         </div>
         <div class="toolBox"
-             @insert.window="add($event.detail.obj); selectedTab=objects.length-1"
-             @delete.window="remove(objects[$event.detail.index]); selectedTab === $event.detail.index && selectedTab--;">
+             @insert.window="add($event.detail.obj);"
+             @delete.window="remove(objects[$event.detail.index]);">
             <div class="toolSet">
                 <h2>Insert</h2>
                 <button @click="$dispatch('insert', {obj: new CanvasText(context)})">Text</button>
@@ -45,7 +46,7 @@
                 <h2>Objects</h2>
                 <template x-for="(obj, i) in objects" :key="i">
                     <button :class="`tab${tabIsSelected(i)}`" @click="selectedTab = i">
-                        <span x-text="`${i+1}. ${CanvasTypeWizard.typeOf(obj)}`"></span>
+                        <span x-text="`${i+1}. ${obj.type}`"></span>
                         <span @click.stop="$dispatch('delete', {index: i})">&times;</span>
                     </button>
                 </template>
@@ -176,7 +177,7 @@
                 <a :href="dataUrl()" class="button" download="untitled-card.png">PNG</a>
                 <a :href="dataUrl('image/jpeg')" class="button" download="untitled-card.jpg">JPG</a>
                 <button @click="showText(dataUrl())" :title="dataUrl()">Base 64</button>
-                <button @click="showText(toJSON())" :title="toJSON()">JSON</button>
+                <button @click="showText(dehydrate())" :title="dehydrate()">JSON</button>
                 <template x-if="textareaVisible">
                     <div>
                         <textarea x-text="textareaContent" contenteditable="false"></textarea>
@@ -187,7 +188,7 @@
             <div class="toolSet">
                 <h2>Import from</h2>
                 <p>
-                    JSON: <textarea @change="objects = fromJSON($event.target.value); render();"></textarea>
+                    JSON: <textarea @change="objects = hydrate($event.target.value);"></textarea>
                 </p>
             </div>
         </div>
